@@ -7,7 +7,6 @@ name = "nemo-mqtt-plugin"
 version = "1.0.0"
 description = "MQTT integration plugin for NEMO tool usage events"
 readme = "README.md"
-license = { text = "MIT" }
 license-files = ["LICEN[CS]E*"]
 authors = [
     {name = "Alex Denton", email = "alexdenton998@gmail.com"}
@@ -18,6 +17,7 @@ maintainers = [
 keywords = ["nemo", "mqtt", "django", "plugin", "iot", "real-time", "monitoring"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
