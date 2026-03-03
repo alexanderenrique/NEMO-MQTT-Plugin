@@ -81,9 +81,11 @@ class MQTTSignalHandler:
 
         signal_id = str(uuid.uuid4())[:8]
 
-        print(f"\n[SIGNAL-{signal_id}] Django Signal → Redis Publisher")
-        print(f"   Topic: {topic}")
-        print(f"   Data: {json.dumps(data, indent=2)}")
+        logger.debug(
+            "Django Signal → Redis Publisher: topic=%s data=%s",
+            topic,
+            json.dumps(data, indent=2),
+        )
 
         if self.redis_publisher:
             try:
@@ -97,26 +99,23 @@ class MQTTSignalHandler:
                     retain=config.retain_messages,
                 )
                 if success:
-                    print(f"[OK] [SIGNAL-{signal_id}] Successfully published to Redis")
-                    print(f"   Message sent to Redis list 'nemo_mqtt_events'")
+                    logger.debug(
+                        "Successfully published to Redis (signal_id=%s), message sent to list 'nemo_mqtt_events'",
+                        signal_id,
+                    )
                     logger.info(f"Successfully published to Redis: {topic}")
                 else:
-                    print(f"[ERROR] [SIGNAL-{signal_id}] Failed to publish to Redis")
                     logger.error(f"Failed to publish to Redis: {topic}")
             except Exception as e:
-                print(
-                    f"[ERROR] [SIGNAL-{signal_id}] Exception publishing to Redis: {e}"
-                )
                 logger.error(f"Failed to publish MQTT message via Redis: {e}")
         else:
-            print(f"[ERROR] [SIGNAL-{signal_id}] Redis publisher not available")
             logger.warning("Redis publisher not available")
 
 
 # Global signal handler instance
-print("Initializing MQTT Signal Handler...")
+logger.info("Initializing MQTT Signal Handler...")
 signal_handler = MQTTSignalHandler()
-print(f"MQTT Signal Handler initialized: {id(signal_handler)}")
+logger.debug("MQTT Signal Handler initialized: %s", id(signal_handler))
 
 
 # Only register signal handlers if NEMO is available
@@ -128,10 +127,13 @@ if NEMO_AVAILABLE:
         import uuid
 
         signal_id = str(uuid.uuid4())[:8]
-        print(f"\n[TOOL-SIGNAL-{signal_id}] Tool save event triggered")
-        print(f"   Tool: {instance.name} (ID: {instance.id})")
-        print(f"   Created: {created}")
-        print(f"   Operational: {instance.operational}")
+        logger.debug(
+            "Tool save event triggered: tool=%s (id=%s) created=%s operational=%s",
+            instance.name,
+            instance.id,
+            created,
+            instance.operational,
+        )
 
         if signal_handler.redis_publisher:
             action = "created" if created else "updated"
@@ -142,10 +144,10 @@ if NEMO_AVAILABLE:
                 "tool_status": instance.operational,
                 "timestamp": instance._state.adding,
             }
-            print(f"[TOOL-SIGNAL-{signal_id}] Publishing tool_{action} event...")
+            logger.debug("Publishing tool_%s event (signal_id=%s)", action, signal_id)
             signal_handler.publish_message(f"nemo/tools/{instance.id}", data)
         else:
-            print(f"[ERROR] [TOOL-SIGNAL-{signal_id}] Redis publisher not available")
+            logger.warning("Redis publisher not available (tool_saved, signal_id=%s)", signal_id)
 
     @receiver(post_save, sender=Area)
     def area_saved(sender, instance, created, **kwargs):
@@ -189,7 +191,7 @@ if NEMO_AVAILABLE:
         signal_id = str(uuid.uuid4())[:8]
 
         if not signal_handler.redis_publisher:
-            print(f"[SIGNAL-{signal_id}] Redis publisher not available")
+            logger.warning("Redis publisher not available (usage_event_saved, signal_id=%s)", signal_id)
             return
 
         # End time set = tool disabled (usage ended); no end = tool enabled (usage started)
@@ -206,10 +208,10 @@ if NEMO_AVAILABLE:
             signal_handler.publish_message(
                 f"nemo/tools/{instance.tool.id}/disabled", disabled_data
             )
-            print(f"[SIGNAL-{signal_id}] disabled event published to Redis")
+            logger.debug("Disabled event published to Redis (signal_id=%s)", signal_id)
         else:
             # Tool enabled / usage started — publish only .../enabled (no .../start to avoid duplicate status)
-            print(f"[SIGNAL-{signal_id}] No end time - Publishing tool_enabled")
+            logger.debug("No end time - publishing tool_enabled (signal_id=%s)", signal_id)
 
             enabled_data = {
                 "event": "tool_enabled",
@@ -222,9 +224,9 @@ if NEMO_AVAILABLE:
             signal_handler.publish_message(
                 f"nemo/tools/{instance.tool.id}/enabled", enabled_data
             )
-            print(f"[SIGNAL-{signal_id}] enabled event published to Redis")
+            logger.debug("Enabled event published to Redis (signal_id=%s)", signal_id)
 
-        print(f"[SIGNAL-{signal_id}] Signal processing complete")
+        logger.debug("Signal processing complete (signal_id=%s)", signal_id)
         logger.info(f"Published events for UsageEvent {instance.id}")
 
     # Area access signals

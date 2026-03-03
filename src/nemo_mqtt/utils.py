@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def get_mqtt_config(force_refresh: bool = False) -> Optional[MQTTConfiguration]:
+def get_mqtt_config(force_refresh: bool = False) -> Optional["MQTTConfiguration"]:
     """
     Get MQTT configuration from database with caching.
 

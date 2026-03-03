@@ -6,7 +6,6 @@ plugin via pip (when developing or installing from source).
 """
 
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -34,11 +33,17 @@ class Command(BaseCommand):
             action="store_true",
             help="Install the plugin via pip first (pip install -e .)",
         )
+        parser.add_argument(
+            "--gitlab",
+            action="store_true",
+            help="Production/GitLab mode: do not modify files; print config snippets to add to your version-controlled repo.",
+        )
 
     def handle(self, *args, **options):
         nemo_path = options.get("nemo_path") or os.getcwd()
         create_backup = options.get("backup", False)
         install_package = options.get("install_package", False)
+        gitlab_mode = options.get("gitlab", False)
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -49,19 +54,17 @@ class Command(BaseCommand):
         if install_package:
             self._install_package()
 
-        # Check if we're in a NEMO installation
-        if not self._is_nemo_installation(nemo_path):
+        # Check if we're in a NEMO installation (skip for gitlab if path is default)
+        if not self._is_nemo_installation(nemo_path) and not gitlab_mode:
             raise CommandError(f"{nemo_path} does not appear to be a NEMO installation")
+
+        if gitlab_mode:
+            self._print_gitlab_instructions()
+            return
 
         success_count = 0
 
-        # Configure settings files
-        settings_files = self._find_settings_files(nemo_path)
-        for settings_file in settings_files:
-            if self._configure_settings_file(settings_file, create_backup):
-                success_count += 1
-
-        # Configure URLs
+        # Configure URLs only (INSTALLED_APPS and LOGGING are configured manually)
         if self._configure_urls(nemo_path, create_backup):
             success_count += 1
 
@@ -70,9 +73,10 @@ class Command(BaseCommand):
         )
 
         self.stdout.write("\nNext steps:")
-        self.stdout.write("1. Run migrations: python manage.py migrate nemo_mqtt")
-        self.stdout.write("2. Start NEMO: python manage.py runserver")
-        self.stdout.write("3. Configure MQTT at /customization/mqtt/")
+        self.stdout.write("1. Add 'nemo_mqtt' to INSTALLED_APPS in your settings if not already present.")
+        self.stdout.write("2. Run migrations: python manage.py migrate nemo_mqtt")
+        self.stdout.write("3. Start NEMO: python manage.py runserver")
+        self.stdout.write("4. Configure MQTT at /customization/mqtt/")
 
     def _install_package(self):
         """Install the plugin via pip in editable mode"""
@@ -90,27 +94,40 @@ class Command(BaseCommand):
                 f"pip install failed: {e.stderr.decode() if e.stderr else e}"
             )
 
+    def _print_gitlab_instructions(self):
+        """Print config snippets for version-controlled deployment (no file changes)."""
+        self.stdout.write(
+            self.style.WARNING(
+                "\nGitLab/Production mode: no files were modified on this server.\n"
+            )
+        )
+        self.stdout.write(
+            "Add the following to your NEMO repo and deploy via GitLab/Ansible.\n"
+        )
+
+        self.stdout.write(self.style.SUCCESS("\n1. In settings (e.g. settings.py or settings_prod.py), add to INSTALLED_APPS:"))
+        self.stdout.write("""
+    'nemo_mqtt',
+""")
+
+        self.stdout.write(self.style.NOTICE("\n2. (Optional) If you use LOGGING in settings, add a 'nemo_mqtt' logger with your preferred level and handlers (e.g. DEBUG in dev, INFO or WARNING in production)."))
+
+        self.stdout.write(self.style.SUCCESS("\n3. In NEMO/urls.py, add:"))
+        self.stdout.write("""
+    # MQTT plugin URLs
+    path("mqtt/", include("nemo_mqtt.urls")),
+""")
+        self.stdout.write("   (inside urlpatterns, or use: urlpatterns += [ path(...), ])\n")
+
+        self.stdout.write(self.style.SUCCESS("\nNext steps:"))
+        self.stdout.write("  • Commit and push the changes, then deploy to the server.")
+        self.stdout.write("  • On the server after deploy: python manage.py migrate nemo_mqtt")
+        self.stdout.write("  • Configure MQTT at /customization/mqtt/\n")
+
     def _is_nemo_installation(self, path):
         """Check if the path contains a NEMO installation"""
         nemo_path = Path(path)
         return (nemo_path / "manage.py").exists() and (nemo_path / "NEMO").exists()
-
-    def _find_settings_files(self, nemo_path):
-        """Find NEMO settings files"""
-        settings_files = []
-        patterns = [
-            "settings.py",
-            "settings_dev.py",
-            "settings_prod.py",
-            "settings_local.py",
-        ]
-
-        for pattern in patterns:
-            settings_file = Path(nemo_path) / pattern
-            if settings_file.exists():
-                settings_files.append(str(settings_file))
-
-        return settings_files
 
     def _backup_file(self, file_path):
         """Create a backup of the file"""
@@ -121,68 +138,6 @@ class Command(BaseCommand):
                     backup.write(original.read())
             self.stdout.write(f"[OK] Created backup: {backup_path}")
         return backup_path
-
-    def _configure_settings_file(self, settings_file, create_backup):
-        """Configure a settings file for MQTT plugin"""
-        if create_backup:
-            self._backup_file(settings_file)
-
-        with open(settings_file, "r") as f:
-            content = f.read()
-
-        modified = False
-
-        # Add to INSTALLED_APPS
-        if "'nemo_mqtt'" not in content and '"nemo_mqtt"' not in content:
-            pattern = r"(INSTALLED_APPS\s*=\s*\[[^\]]*)(\]\s*$)"
-            match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
-
-            if match:
-                new_content = (
-                    content[: match.start(2)] + "    'nemo_mqtt',\n" + match.group(2)
-                )
-                with open(settings_file, "w") as f:
-                    f.write(new_content)
-                self.stdout.write(
-                    f"[OK] Added nemo_mqtt to INSTALLED_APPS in {settings_file}"
-                )
-                modified = True
-            else:
-                self.stdout.write(
-                    f"WARNING: Could not find INSTALLED_APPS in {settings_file}"
-                )
-        else:
-            self.stdout.write(
-                f"[OK] nemo_mqtt already in INSTALLED_APPS in {settings_file}"
-            )
-            modified = True
-
-        # Add logging configuration
-        if "'nemo_mqtt'" not in content or "loggers" not in content:
-            if "LOGGING" in content:
-                pattern = r"(\s+)(\'loggers\':\s*\{[^}]*)(\})"
-                match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
-
-                if match:
-                    logger_config = """
-        'nemo_mqtt': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },"""
-                    new_content = (
-                        content[: match.start(2)]
-                        + match.group(2)
-                        + logger_config
-                        + content[match.start(3) :]
-                    )
-
-                    with open(settings_file, "w") as f:
-                        f.write(new_content)
-                    self.stdout.write(f"[OK] Added MQTT logging to {settings_file}")
-                    modified = True
-
-        return modified
 
     def _configure_urls(self, nemo_path, create_backup):
         """Configure NEMO URLs for MQTT plugin"""

@@ -18,10 +18,16 @@ class Command(BaseCommand):
         parser.add_argument(
             "--backup", action="store_true", help="Create backup before modifying"
         )
+        parser.add_argument(
+            "--gitlab",
+            action="store_true",
+            help="Production/GitLab mode: do not modify config files; print snippets for your repo.",
+        )
 
     def handle(self, *args, **options):
         call_command(
             "setup_nemo_integration",
             install_package=True,
             backup=options["backup"],
+            gitlab=options["gitlab"],
         )

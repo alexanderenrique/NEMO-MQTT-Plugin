@@ -74,9 +74,6 @@ except ImportError:
     )
     from NEMO.plugins.nemo_mqtt.bridge.mqtt_connection import connect_mqtt
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 

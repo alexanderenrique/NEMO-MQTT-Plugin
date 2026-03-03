@@ -20,7 +20,7 @@ This is a Django plugin that publishes NEMO tool usage events to MQTT (tool enab
 ```
 
 - **Django**: Signal handlers (Tool save, UsageEvent) publish JSON to Redis list `nemo_mqtt_events` (Redis DB 1).
-- **Bridge**: Separate process runs `python -m nemo_mqtt.redis_mqtt_bridge`; it consumes from Redis and publishes to the MQTT broker with QoS 1.
+- **Bridge**: Separate process runs `python -m NEMO_mqtt.redis_mqtt_bridge`; it consumes from Redis and publishes to the MQTT broker with QoS 1.
 - **Topics**: `nemo/tools/{id}/enabled`, `nemo/tools/{id}/disabled`
 
 Configuration is stored in Django (e.g. `/customization/mqtt/`) and loaded by the bridge on each connection.
@@ -29,32 +29,45 @@ Configuration is stored in Django (e.g. `/customization/mqtt/`) and loaded by th
 
 **Prerequisites:** Python 3.8+, Django 3.2+, NEMO-CE 4.0+, Redis, MQTT broker (e.g. Mosquitto).
 
+**Simplified deployment:** If you use the package with the main folder named `src/NEMO_mqtt` (capital NEMO), NEMO will automatically add the plugin URLs to its main `urls.py`, so no manual URL wiring is needed and installation is easier.
+
 ### From PyPI (recommended)
 
 ```bash
 pip install nemo-mqtt-plugin
 cd /path/to/your/nemo-ce
-# Add 'nemo_mqtt' to INSTALLED_APPS first, then run setup to add URLs and logging
+# Add 'nemo_mqtt' to INSTALLED_APPS in your settings (see Manual below).
 python manage.py setup_nemo_integration
+python manage.py migrate nemo_mqtt
+```
+
+**Local / testing:** The command above only modifies `NEMO/urls.py` (adds the MQTT URL include). Add `nemo_mqtt` to `INSTALLED_APPS` and any logging config yourself.
+
+**Production with GitLab/Ansible:** If your config is in version control and deployed by GitLab or Ansible, run with `--gitlab` so no files are changed on the server; the command will print the snippets to add to your repo:
+
+```bash
+python manage.py setup_nemo_integration --gitlab
+# Add the printed snippets to your repo (INSTALLED_APPS and URLs; configure logging as needed for your environment), commit, and deploy. Then on the server:
 python manage.py migrate nemo_mqtt
 ```
 
 ### Manual
 
 1. `pip install nemo-mqtt-plugin`
-2. Add `'nemo_mqtt'` to `INSTALLED_APPS`.
-3. Add `path("mqtt/", include("nemo_mqtt.urls"))` to your root `urlpatterns`.
-4. Run `python manage.py migrate nemo_mqtt`.
+2. Add `'nemo_mqtt'` to `INSTALLED_APPS` in your settings.
+3. (Optional) If you use Django’s `LOGGING` setting, add a `nemo_mqtt` logger with your preferred level and handlers (e.g. DEBUG in dev/test, INFO or WARNING in production). What and how you log is installation-dependent.
+4. With the app named `nemo_mqtt`, NEMO can auto-add the plugin URLs; run `python manage.py setup_nemo_integration` to add them, or add `path("mqtt/", include("nemo_mqtt.urls"))` to `NEMO/urls.py` yourself.
+5. Run `python manage.py migrate nemo_mqtt`.
 
 ### After install
 
 1. **Configure**: Open `/customization/mqtt/` in NEMO, set broker host/port (and auth if needed), enable the config.
 2. **Start NEMO** (e.g. `python manage.py runserver`). With the default AUTO mode, the plugin automatically starts Redis and the Redis–MQTT bridge (and a local Mosquitto broker for development).
 
-**Production:** Use EXTERNAL mode so the plugin does not start or kill brokers: set `RedisMQTTBridge(auto_start=False)` in `nemo_mqtt/apps.py`. Then start Redis and the MQTT broker yourself, and run the bridge separately (e.g. `python -m nemo_mqtt.redis_mqtt_bridge` or as a systemd service).
+**Production:** Use EXTERNAL mode so the plugin does not start or kill brokers: set `RedisMQTTBridge(auto_start=False)` in `NEMO_mqtt/apps.py`. Then start Redis and the MQTT broker yourself, and run the bridge separately (e.g. `python -m NEMO_mqtt.redis_mqtt_bridge` or as a systemd service).
 
 ---
 
-- **Monitoring:** Event stream at `/mqtt/monitor/`; CLI tools in `nemo_mqtt.monitoring` (see `src/nemo_mqtt/monitoring/README.md`).
+- **Monitoring:** Event stream at `/mqtt/monitor/`; CLI tools in `NEMO_mqtt.monitoring` (see `src/NEMO_mqtt/monitoring/README.md`).
 - **HMAC:** Optional payload signing
 - **License:** MIT. [Issues](https://github.com/alexanderenrique/NEMO-MQTT-Plugin/issues) · [Discussions](https://github.com/alexanderenrique/NEMO-MQTT-Plugin/discussions)
