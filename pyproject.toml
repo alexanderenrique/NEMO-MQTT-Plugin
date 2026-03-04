@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nemo-mqtt-plugin"
-version = "1.0.0"
+version = "1.0.1"
 description = "MQTT integration plugin for NEMO tool usage events"
 readme = "README.md"
 
