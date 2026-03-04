@@ -3,7 +3,7 @@ requires = ["setuptools>=65.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nemo-mqtt-plugin"
+name = "nemo-mqtt-bridge"
 version = "1.0.1"
 description = "MQTT integration plugin for NEMO tool usage events"
 readme = "README.md"
@@ -74,11 +74,11 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["NEMO_mqtt*"]
-exclude = ["nemo_mqtt*"]
+include = ["NEMO_mqtt_bridge*"]
+exclude = ["nemo_mqtt_bridge*"]
 
 [tool.setuptools.package-data]
-NEMO_mqtt = [
+NEMO_mqtt_bridge = [
     "templates/**/*",
     "migrations/**/*",
     "static/**/*",
@@ -108,17 +108,17 @@ profile = "black"
 multi_line_output = 3
 line_length = 88
 known_django = "django"
-known_first_party = "NEMO_mqtt"
+known_first_party = "NEMO_mqtt_bridge"
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.test_settings"
 python_files = ["test_*.py", "*_test.py"]
-addopts = "-v --tb=short --cov=NEMO_mqtt --cov-report=html --cov-report=term-missing --ignore=tests/test_monitor_api.py --ignore=tests/test_api.py"
+addopts = "-v --tb=short --cov=NEMO_mqtt_bridge --cov-report=html --cov-report=term-missing --ignore=tests/test_monitor_api.py --ignore=tests/test_api.py"
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["NEMO_mqtt"]
+source = ["NEMO_mqtt_bridge"]
 omit = [
     "*/migrations/*",
     "*/tests/*",

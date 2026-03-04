@@ -1,5 +1,5 @@
 """
-Django test settings for NEMO MQTT Plugin
+Django test settings for NEMO MQTT Bridge plugin
 """
 import os
 
@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'NEMO_mqtt',
+    'NEMO_mqtt_bridge',
 ]
 
 MIDDLEWARE = [
@@ -106,7 +106,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        'NEMO_mqtt': {
+        'NEMO_mqtt_bridge': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,

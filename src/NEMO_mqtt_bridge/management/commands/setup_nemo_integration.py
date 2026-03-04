@@ -84,7 +84,7 @@ class Command(BaseCommand):
             )
 
         self.stdout.write("\nNext steps:")
-        self.stdout.write("1. Add 'NEMO_mqtt' to INSTALLED_APPS in your settings if not already present.")
+        self.stdout.write("1. Add 'NEMO_mqtt_bridge' to INSTALLED_APPS in your settings if not already present.")
         self.stdout.write("2. Run migrations: python manage.py migrate nemo_mqtt")
         self.stdout.write("3. Start NEMO: python manage.py runserver")
         self.stdout.write("4. Configure MQTT at /customization/mqtt/")
@@ -126,15 +126,15 @@ class Command(BaseCommand):
         """Print INSTALLED_APPS, LOGGING, and urls.py snippets (no file changes)."""
         self.stdout.write(self.style.SUCCESS("\n1. In settings (e.g. settings.py or settings_prod.py), add to INSTALLED_APPS:"))
         self.stdout.write("""
-    'NEMO_mqtt',
+    'NEMO_mqtt_bridge',
 """)
 
-        self.stdout.write(self.style.NOTICE("\n2. (Optional) If you use LOGGING in settings, add a 'NEMO_mqtt' logger with your preferred level and handlers (e.g. DEBUG in dev, INFO or WARNING in production)."))
+        self.stdout.write(self.style.NOTICE("\n2. (Optional) If you use LOGGING in settings, add a 'NEMO_mqtt_bridge' logger with your preferred level and handlers (e.g. DEBUG in dev, INFO or WARNING in production)."))
 
         self.stdout.write(self.style.SUCCESS("\n3. In NEMO/urls.py, add:"))
         self.stdout.write("""
     # MQTT plugin URLs
-    path("mqtt/", include("NEMO_mqtt.urls")),
+    path("mqtt/", include("NEMO_mqtt_bridge.urls")),
 """)
         self.stdout.write("   (inside urlpatterns, or use: urlpatterns += [ path(...), ])\n")
 
@@ -168,7 +168,7 @@ class Command(BaseCommand):
             content = f.read()
 
         # Check if already added
-        if "NEMO_mqtt.urls" in content:
+        if "NEMO_mqtt_bridge.urls" in content:
             self.stdout.write(f"[OK] MQTT URLs already added to {urls_file}")
             return True
 
@@ -176,7 +176,7 @@ class Command(BaseCommand):
         mqtt_urls = """
     # Add MQTT plugin URLs
     urlpatterns += [
-        path("mqtt/", include("NEMO_mqtt.urls")),
+        path("mqtt/", include("NEMO_mqtt_bridge.urls")),
     ]"""
 
         # Find a good place to add the URLs
